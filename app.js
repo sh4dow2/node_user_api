@@ -1,40 +1,52 @@
-const express = require('express')
+const Koa = require('koa')
+const Router = require('koa-router')
 const mongoose = require('mongoose')
-const bodyParser = require('body-parser')
-const passport = require('passport')
+const bodyParser = require('koa-bodyparser')
+const passport = require('koa-passport')
 
-const app = express()
-const port = process.env.PORT || 3000
 
-// 引入 users.js
-const users = require('./routes/users')
+// 实例化koa
+const app = new Koa()
+const router = new Router()
 
-// 数据库配置文件
-const db = require('./configs/configs').mongoURI
+app.use(bodyParser())
 
-// 使用body-parser中间件
-app.use(bodyParser.urlencoded({extended: false}))
-app.use(bodyParser.json())
+app.use(passport.initialize())
+app.use(passport.session())
 
-// 连接MongoDB数据库
-mongoose.connect(db).then(() => {
-  console.log('MongoDB Connected')
-}).catch((err) => {
+require('./config/passport')(passport)
+
+// 引入路由
+const users = require('./routes/api/user')
+const profiles = require('./routes/api/profile')
+
+// 路由
+router.get('/', async ctx => {
+  ctx.body = {
+    msg: 'Hello Koa!'
+  }
+})
+
+// 连接数据库
+const db = require('./config/keys').mongoURI
+//mongodb://dan:123@127.0.0.1:27017/koa
+mongoose.connect(db , {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('mongodb connected x...')
+}).catch(err => {
   console.log(err)
 })
 
-//passport 初始化
-app.use(passport.initialize())
-require('./configs/passport')(passport)
+// 配置路由地址
+router.use('/api/users', users)
+router.use('/api/profile', profiles)
 
-app.get('/', (req, res) => {
-  res.json('hello')
-})
-
-// 使用 routes
-app.use('/users', users)
+// 配置路由
+app.use(router.routes()).use(router.allowedMethods())
+const port = process.env.PORT || 5000
 
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`)
+  console.log(`server started on ${port}`)
 })
-
